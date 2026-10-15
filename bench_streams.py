@@ -1,7 +1,7 @@
 import json,sys,time,threading,urllib.request
-N=int(sys.argv[1]); U="http://localhost:8000/v1/chat/completions"; bar=threading.Barrier(N); res=[None]*N
+N=int(sys.argv[1]); KIND=sys.argv[2] if len(sys.argv)>2 else "prose"; U="http://localhost:8000/v1/chat/completions"; bar=threading.Barrier(N); res=[None]*N
 def one(i):
-    b={"model":"nemotron-3.5-super-vl","messages":[{"role":"user","content":f"Write a long story about lighthouse #{i}."}],"max_tokens":512,"ignore_eos":True,"stream":True,"stream_options":{"include_usage":True},"chat_template_kwargs":{"enable_thinking":False}}
+    b={"model":"nemotron-3.5-super-vl","messages":[{"role":"user","content":(f"Write a long story about lighthouse #{i}." if KIND=="prose" else f"Write a complete Python module #{i}: a thread-safe LRU cache class with TTL, full type hints, docstrings, and pytest unit tests.")}],"max_tokens":512,"ignore_eos":True,"stream":True,"stream_options":{"include_usage":True},"chat_template_kwargs":{"enable_thinking":False}}
     r=urllib.request.Request(U,json.dumps(b).encode(),{"Content-Type":"application/json"}); bar.wait(); t0=time.time(); first=None; n=0
     with urllib.request.urlopen(r,timeout=900) as f:
         for line in f:
