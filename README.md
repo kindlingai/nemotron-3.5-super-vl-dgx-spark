@@ -74,6 +74,19 @@ gives 26-28. Measured per verify step: 2 tokens = 44.8 ms and 2.0 tokens accepte
 2.3 tokens per step. On our prompts only ~1-1.3 drafted tokens are accepted per step, so longer drafts mostly add
 verify cost. (An early 2-token boot measured 30 tok/s; two fresh boots did not reproduce it.)
 
+## llama-benchy (forum settings)
+
+`llama-benchy`, pp2048 + tg128, 1 request at a time, 3 runs per depth, prompt depth 0 / 4K / 8K / 16K tokens.
+All rows: GPU clock capped at 2000 MHz. tg = decode tok/s, pp = prefill tok/s (mean of 3 runs).
+
+| setup | tg d0 | tg d4K | tg d8K | tg d16K | pp d0 | pp d4K | pp d8K | pp d16K |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| 2 Sparks TP2, decode (`marlin`, drafter 4) | 64.1 | 64.0 | 61.9 | 65.1 | 2,584 | 2,887 | 2,937 | 2,943 |
+| 2 Sparks TP2, balanced (`b12x`, drafter 4) | 65.0 | 58.1 | 51.6 | 62.6 | 3,357 | 3,179 | 3,435 | 3,408 |
+| 1 Spark, card recipe (drafter 7) | 40.9 | 34.8 | 31.0 | 37.7 | 2,156 | 2,919 | 2,862 | 2,896 |
+
+tg128 numbers are higher than our 512-token prose numbers above: the llama-benchy prompt is easier to draft, so more drafted tokens are accepted per step.
+
 ## Notes
 
 - With the card's flags, TP2 helps prefill (+35%) and multi-stream decode but not single-stream decode. The `marlin` + 4-token drafter profile above fixes that.
