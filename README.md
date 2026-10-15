@@ -85,7 +85,7 @@ All rows: GPU clock capped at 2000 MHz. tg = decode tok/s, pp = prefill tok/s (m
 | 2 Sparks TP2, balanced (`b12x`, drafter 4) | 65.0 | 58.1 | 51.6 | 62.6 | 3,357 | 3,179 | 3,435 | 3,408 |
 | 1 Spark, card recipe (drafter 7) | 40.9 | 34.8 | 31.0 | 37.7 | 2,156 | 2,919 | 2,862 | 2,896 |
 
-tg128 numbers are higher than our 512-token prose numbers above: the llama-benchy prompt is easier to draft, so more drafted tokens are accepted per step.
+tg128 decode here is higher than our 512-token prose decode above. We have not measured why yet (likely a higher draft acceptance on the llama-benchy prompt; not verified).
 
 ## Notes
 
