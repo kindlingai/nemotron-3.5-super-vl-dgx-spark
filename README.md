@@ -54,23 +54,25 @@ At 900K tokens the model did not find it (1 try).
 ## TP2 decode tuning (update)
 
 Two extra TP2 profiles (see the header of `serve-tp2.sh`). Both Sparks GPU clock capped at 2000 MHz.
-1 stream, 512 tokens, thinking off. "prose" = a story prompt, "code" = a Python module with tests.
+512-token decode, thinking off. "prose" = a story prompt, "code" = a Python module with tests.
+Code decode varies between runs (sampling at temperature 1.0 changes how many drafted tokens are accepted).
 
-| TP2 profile | prefill 8K | prefill 32K | 1 stream, prose | 1 stream, code |
-|---|---:|---:|---:|---:|
-| prefill (card default, drafter 7 tokens) | 4,216 tok/s | 3,968 tok/s | 26-27 tok/s | - |
-| balanced: `b12x` MoE + linear, drafter 4 tokens | 3,372 tok/s | 3,300 tok/s | 43 tok/s | 59-67 tok/s |
-| decode: `marlin` MoE, drafter 4 tokens | 2,798-3,014 tok/s | 2,892-2,900 tok/s | 44-46 tok/s | 71-79 tok/s |
+**Which one:** for one user, use **balanced** (`b12x`): same single-stream speed as `marlin` and ~14% faster prefill.
+Use **decode** (`marlin`) for the highest total throughput with 4 parallel chats.
 
-Decode profile, more results:
-- 250K-token needle at 60% depth: found (first token after 113 s).
-- With `--max-num-seqs 4`: 4 streams fired at once gave 95 tok/s total (prose) and 155 tok/s total (code). In that
-  configuration single-stream decode was lower (31 prose / 50 code). We have not found why yet; use the default
-  `--max-num-seqs 1` for single-user speed.
+| TP2 profile | prefill 8K | prefill 32K | 1 stream prose | 1 stream code | 4 streams at once (total) | 250K needle |
+|---|---:|---:|---:|---:|---|---|
+| prefill (card default, drafter 7 tokens) | 4,216 tok/s | 3,968 tok/s | 26-27 tok/s | - | - | - |
+| balanced: `b12x` MoE + linear, drafter 4 tokens | 3,314-3,372 tok/s | 3,300-3,314 tok/s | 43-44 tok/s | 59-74 tok/s | 82 prose / 140 code tok/s | found, 1st token 102 s |
+| decode: `marlin` MoE, drafter 4 tokens | 2,798-3,014 tok/s | 2,892-2,900 tok/s | 44-46 tok/s | 71-79 tok/s | 95 prose / 155 code tok/s | found, 1st token 113 s |
 
-Draft-token count matters: with `marlin`, 2 tokens gave 30/38 tok/s (prose/code), 3 gave 44-46/69-73,
-4 gave 44-46/71-79, 7 gave 26-28 (prose). Our reading of 7 (not proven): each verify step checks 8 tokens; every token routes to
-different experts, so a step reads far more expert weights while only ~2-3 drafts are accepted.
+The 4-stream rows used `--max-num-seqs 4`; single-stream speed is the same with that setting
+(re-checked: `marlin` 45.4-45.6 tok/s prose with 4 sequences, two fresh boots).
+
+Draft-token count (`marlin`, 1 stream, prose): 2, 3 and 4 tokens all give 43-46 tok/s; 7 tokens (the card value)
+gives 26-28. Measured per verify step: 2 tokens = 44.8 ms and 2.0 tokens accepted per step; 4 tokens = 51.8 ms and
+2.3 tokens per step. On our prompts only ~1-1.3 drafted tokens are accepted per step, so longer drafts mostly add
+verify cost. (An early 2-token boot measured 30 tok/s; two fresh boots did not reproduce it.)
 
 ## Notes
 
