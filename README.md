@@ -87,6 +87,34 @@ All rows: GPU clock capped at 2000 MHz. tg = decode tok/s, pp = prefill tok/s (m
 
 tg128 decode here is higher than our 512-token prose decode above. We have not measured why yet (likely a higher draft acceptance on the llama-benchy prompt; not verified).
 
+## Many chats at once (llama-benchy concurrency)
+
+2 Sparks TP2, `--max-num-seqs 16`, GPU clock capped at 2000 MHz. `llama-benchy` pp2048 + tg128, 3 runs, c = requests sent at once.
+total = all decode tokens / wall time. per chat = mean decode speed of one request. TTFT = mean time to first token at c10.
+
+Depth 0 (short prompt):
+
+| TP2 profile | total c1 | total c4 | total c8 | total c10 | per chat c10 | TTFT c10 |
+|---|---:|---:|---:|---:|---:|---:|
+| balanced: `b12x`, drafter 4 | 68 | 108 | 116 | 129 | 19 | 4.2 s |
+| `b12x`, no drafter | 27 | 59 | 78 | 79 | 11 | 4.8 s |
+| decode: `marlin`, drafter 4 | 50 | 141 | 113 | 122 | 20 | 5.4 s |
+
+Depth 16K (each request has an extra 16K-token history):
+
+| TP2 profile | total c1 | total c10 | per chat c10 | peak per chat c10 | TTFT c10 |
+|---|---:|---:|---:|---:|---:|
+| balanced: `b12x`, drafter 4 | 54 | 24 | 7 | 29 | 31 s |
+| `b12x`, no drafter | 27 | 23 | 5 | 15 | 27 s |
+| decode: `marlin`, drafter 4 | 44 | 21 | 7 | 29 | 36 s |
+
+At 16K depth, ten 18K-token prefills run one after another (prefill stays at ~3.0-3.8K tok/s total), so the last request waits ~30 s and
+total decode over the wall time is low. "peak per chat" is the decode speed of a request once it runs.
+The drafter still helps at c10: about 1.6x total decode at depth 0, 2x peak per chat at 16K.
+
+KV pool reported by vLLM at boot (model max length 1M): drafter 4 profiles 10.1-10.3M tokens (~9.7 full 1M requests), no drafter 23.3M tokens.
+These are hybrid-model counts (only 8 attention layers hold KV), so do not compare them with dense-model token counts.
+
 ## Notes
 
 - With the card's flags, TP2 helps prefill (+35%) and multi-stream decode but not single-stream decode. The `marlin` + 4-token drafter profile above fixes that.
